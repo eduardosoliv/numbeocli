@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+
+import bs4
+import requests
+import sys
+
+args = sys.argv
+if len(args) != 5:
+    print("Use ./numbeo-compare city1 country1 city2 country2")
+    exit()
+
+city1 = args[1]
+country1 = args[2]
+city2 = args[3]
+country2 = args[4]
+
+base_url = "http://www.numbeo.com/cost-of-living/compare_cities.jsp"
+url = base_url + "?city1={}&country1={}&city2={}&country2={}".format(city1, country1, city2, country2)
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+response = requests.get(url, headers=headers)
+
+soup = bs4.BeautifulSoup(response.text, "lxml")
+indices = soup.find("table", {"class" : "table_indices_diff"})
+if indices is None:
+    print("Not able to find on numbeo the requested cities")
+    exit()
+
+print(soup.title.text, end='\n\n')
+for row in indices.findAll('tr'):
+    tds = row.findAll('td')
+    if len(tds) == 0:
+        continue
+    print(tds[0].getText().strip())
+
+print(end="\n\n")
+subcategory =  "".ljust(75)
+city1_price = city1.ljust(20)
+city2_price = city2.ljust(20)
+cities_diff = "Difference".ljust(20)
+print("  \033[1m" + subcategory + city1_price + city2_price + cities_diff + "\033[0m")
+
+table_counter = 3
+for table in soup.findAll('table'):
+    if table_counter == 0:
+        for trs in table.findAll('tr'):
+            th = trs.find('th')
+            tds = trs.findAll('td')
+            if th is not None:
+                if th.getText().strip() != "":
+                    print()
+                    print(th.getText().strip())
+            else:
+                tds = trs.findAll('td')
+                subcategory =  tds[0].getText().strip().ljust(75)
+                city1_price = tds[1].getText().strip().ljust(20)
+                city2_price = tds[2].getText().strip().ljust(20)
+                cities_diff = tds[3].getText().strip().ljust(20)
+                print("  " + subcategory + city1_price + city2_price + cities_diff)
+    table_counter = table_counter - 1
+
+print()
